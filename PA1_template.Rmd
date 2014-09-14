@@ -1,0 +1,189 @@
+---
+title: "Activity Monitoring --- Reproducible Research"
+author: "José M. Díaz Galay"
+date: "Content"
+output:
+  html_document:
+    toc: true
+    theme: cerulean
+---
+
+### Loading and Preprocessing the Data. 
+
+```{r echo=FALSE}
+setwd("C:/Users/hp/Desktop/Data Science Specialization/(5) Reproducible Research/Assignment 1/repdata_data_activity")
+```
+
+The following code loads the data to the current working space and performs the proper reading to make it suitable for analysis.
+
+```{r}
+#1
+Activity <- read.csv("activity.csv", header=T)
+#2
+Activity$date <- as.Date(Activity$date)
+```
+
+### What is mean total number of steps taken per day?
+
+First, let's extract the total number of steps per day and take a look at the distribution though a histogram. 
+
+```{r }
+#1
+Activity.Sum.By <- as.data.frame(aggregate(Activity$steps, by=list(Activity$date), FUN=sum))
+colnames(Activity.Sum.By) <- c("Dates", "Sum_of_Number_Steps")
+hist(Activity.Sum.By$Sum_of_Number_Steps, col="yellow", breaks=15, main="Distribution of the 
+     Total Number of Steps taken per Day", xlab="Number of Steps")
+
+```
+
+The following table outputs the mean and median of the number of steps by day. 
+
+```{r }
+#2
+Activity.Mean.By <- as.data.frame(aggregate(Activity$steps, by=list(Activity$date), FUN=mean))
+Activity.Mean.Median <- cbind(Activity.Mean.By, aggregate(Activity$steps, by=list(Activity$date), FUN=median)$x)
+colnames(Activity.Mean.Median) <- c("Dates", "Mean_Steps", "Median_Steps")
+Activity.Mean.Median
+
+```
+
+
+### What is the Average daily Activity Pattern?
+
+In order to get this information, first let's make a time series plot of the average number of steps taken through every 5-minute interval, averaged across all days.
+
+```{r}
+#1
+Activ.Mean.intr <- aggregate( formula = steps~interval, 
+           data = Activity,
+           FUN = mean )
+plot(Activ.Mean.intr, type="l", main="Average Number of 
+     Steps through each Interval")
+
+```
+
+Now, let's obtain the interval with the highest number of steps on average across all days.
+
+```{r}
+#2
+Activ.Mean.intr[which.max(Activ.Mean.intr$steps),]
+```
+
+The interval 835 contains the highest number of steps on average. 
+
+
+### Imputing Missing Values.
+
+Given the fact that the column containing number of steps has a large number of missing values (NA's) it'd be interesting to give a further insight to them. 
+
+```{r}
+# 1
+sum(is.na(Activity$steps))
+```
+
+There is a total of 2304 missing values in the step column. We should devise a strategy to replace them for a predicted value in order to reduce bias. So, let's take the general average for all the availbale measurements and use this value to replace all NA's. 
+
+```{r}
+# 2
+mean(Activity$steps, na.rm=TRUE)
+
+```
+
+So, all missing values are now replaced by 27.38. The new data set with no missing values is created as follows. 
+
+```{r}
+#3
+Activity[is.na(Activity)] <- 37.28
+Activity.Imputed <-  Activity
+
+```
+
+After having created a new imputed data set, let's compare how the histogram, mean and median of the number of steps differ from the original dataset.
+
+
+```{r}
+#4
+Activity.Sum.By.Imp <- as.data.frame(aggregate(Activity.Imputed$steps, by=list(Activity.Imputed$date), FUN=sum))
+colnames(Activity.Sum.By.Imp) <- c("Dates", "Sum_of_Number_Steps")
+
+par(mfrow=c(1,2))
+hist(Activity.Sum.By$Sum_of_Number_Steps, col="yellow", breaks=15, main="Original", xlab="Number of Steps")
+hist(Activity.Sum.By.Imp$Sum_of_Number_Steps, col="yellow", breaks=15, main="Imputed", xlab="Number of Steps")
+
+Activity.Mean.By.Imp <- as.data.frame(aggregate(Activity.Imputed$steps, by=list(Activity.Imputed$date), FUN=mean))
+Activity.Mean.Median.Imp <- cbind(Activity.Mean.By.Imp, aggregate(Activity.Imputed$steps, by=list(Activity.Imputed$date), FUN=median)$x)
+colnames(Activity.Mean.Median.Imp) <- c("Dates", "Mean_Steps_Imp", "Median_Steps_Imp")
+
+Activ.Comparison <- data.frame(Activity.Mean.Median, Activity.Mean.Median.Imp[-1])
+
+Activ.Comparison
+```
+
+As seen on the table, when existed missing values and imputting them, there's no difference in the mean for that day since each day was complete or entirely with missing values. Nevertheless, it'b interesting to check whether the mean by intervals across days has changed dramatically.
+
+```{r echo=FALSE}
+
+Activ.Mean.intr.Imp <- aggregate( formula = steps~interval, 
+           data = Activity.Imputed,
+           FUN = mean )
+
+Activ.Mean.intr.Imp <- data.frame( Activ.Mean.intr, Activ.Mean.intr.Imp[-1])
+colnames(Activ.Mean.intr.Imp) <- c("Interval", "Steps_Mean", "Steps_Mean_Imputed")
+Activ.Mean.intr.Imp
+```
+
+It can be seen that the mean by intervals across days, indeed has changed. The reason is tha the new imputed values are now having a effect especially in small intervals, but in general trying to follow the general pattern in the distribution. Imputed values may introduce bias in the estimates.
+
+### Are there Differences in Activity Patterns between Weekdays and Weekends?
+
+For this final section, let's Create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday (Monday-Friday) or weekend day (Saturday and Sunday).
+
+```{r}
+#1
+Activity.Imputed$day <- weekdays(Activity$date)
+Activity.Imputed$weekday[ Activity.Imputed$day == "Monday"] <- "Weekday"
+Activity.Imputed$weekday[ Activity.Imputed$day == "Tuesday"] <- "Weekday"
+Activity.Imputed$weekday[ Activity.Imputed$day == "Tuesday"] <- "Weekday"
+Activity.Imputed$weekday[ Activity.Imputed$day == "Wednesday"] <- "Weekday"
+Activity.Imputed$weekday[ Activity.Imputed$day == "Thursday"] <- "Weekday"
+Activity.Imputed$weekday[ Activity.Imputed$day == "Friday"] <- "Weekday"
+Activity.Imputed$weekday[Activity.Imputed$day == "Saturday" |Activity.Imputed$day == "Sunday"] <- "Weekend"
+
+Activity.Imp.Days <- Activity.Imputed[,c(-4)]
+ 
+```
+
+Finally, let's make a panel plot containing a time series plot of the 5-minute interval and the average number of steps taken, averaged across all weekday days or weekend days.
+
+```{r}
+#2
+weekdays <- subset(Activity.Imp.Days, weekday =="Weekday")
+weekend <- subset(Activity.Imp.Days, weekday =="Weekend")
+
+Activ.Mean.day <- data.frame(aggregate( formula = steps~interval, 
+           data = weekdays,
+           FUN = mean ), Day='Weekday')
+
+Activ.Mean.end <- data.frame(aggregate( formula = steps~interval, 
+           data = weekend,
+           FUN = mean ), Day='Weekend')
+
+Activ.day <- rbind(Activ.Mean.day, Activ.Mean.end)
+
+library(lattice)
+xyplot(steps~interval|Day, Activ.day, type = "l", layout=c(1,2), ylab="Number of Steps")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
